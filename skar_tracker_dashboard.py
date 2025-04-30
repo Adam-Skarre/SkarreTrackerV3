@@ -30,7 +30,7 @@ if page == "About":
 
 # Live Signal Viewer
 elif page == "Live Signal":
-    st.header("📈 Live Signal Viewer")
+    st.header(" Live Signal Viewer")
     ticker = st.sidebar.text_input("Ticker", value="SPY")
     start = st.sidebar.date_input("Start Date", datetime(2022, 1, 1))
     end = st.sidebar.date_input("End Date", datetime.today())
@@ -68,7 +68,7 @@ elif page == "Live Signal":
 
 # V1 Backtest
 elif page == "Backtest V1":
-    st.header("🔁 Backtest V1: Original Skarre Signal")
+    st.header("Backtest V1: Original Skarre Signal")
     ticker = st.sidebar.text_input("Ticker", value="SPY")
     start = st.sidebar.date_input("Start Date", datetime(2022, 1, 1))
     end = st.sidebar.date_input("End Date", datetime.today())
@@ -83,13 +83,17 @@ elif page == "Backtest V1":
     use_acc = st.sidebar.checkbox("Use Acceleration", True)
 
     signals = generate_signals(slope, accel, entry, exit_, use_acc)
+    
+    # DEBUG: check lengths before backtest
+    st.write(f"▶️ Price length: {len(price)}    Signals length: {len(signals)}")
+    
     result = backtest(price, signals)
     st.subheader("Performance Metrics")
     st.json(result.get("metrics", {}))
 
 # Walk-Forward Validation
 elif page == "Walk-Forward":
-    st.header("🧪 Walk-Forward Validation (V3)")
+    st.header("Walk-Forward Validation (V3)")
     ticker = st.sidebar.text_input("Ticker", value="SPY")
     entry = st.sidebar.number_input("Entry Threshold", value=0.5)
     exit_ = st.sidebar.number_input("Exit Threshold", value=-0.5)
