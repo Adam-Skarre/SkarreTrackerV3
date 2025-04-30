@@ -1,4 +1,6 @@
 import pandas as pd
+import numpy as np
+
 
 def backtest(price: pd.Series, signal: pd.Series) -> dict:
     """
@@ -6,32 +8,36 @@ def backtest(price: pd.Series, signal: pd.Series) -> dict:
     - Buys when signal == 1
     - Sells when signal == -1
     - Holds otherwise
-    Returns metrics and trade log.
+    Returns a dict with 'metrics' and 'trade_log'.
     """
+    # Align signal to next bar (trade on open next day)
     position = signal.shift(1).fillna(0)
-    daily_returns = price.pct_change().fillna(0)
-    strategy_returns = daily_returns * position
 
-    equity = (1 + strategy_returns).cumprod()
+    # Calculate daily returns
+    returns = price.pct_change().fillna(0)
+    strat_returns = returns * position
 
+    # Equity curve
+    equity = (1 + strat_returns).cumprod()
+
+    # Build trade log DataFrame
     trades = pd.DataFrame({
-        "Date": price.index,
         "Price": price.values,
         "Signal": signal.values,
         "Position": position.values,
-        "Return": strategy_returns.values,
+        "Return": strat_returns.values,
         "Equity": equity.values
-    })
+    }, index=price.index)
 
-    # Summary metrics
+    # Compute metrics
     total_return = equity.iloc[-1] - 1
-    sharpe = strategy_returns.mean() / strategy_returns.std() * (252 ** 0.5) if strategy_returns.std() != 0 else 0
+    sharpe = (strat_returns.mean() / strat_returns.std(ddof=1)) * np.sqrt(252) if strat_returns.std() != 0 else np.nan
     max_drawdown = (equity / equity.cummax() - 1).min()
 
     metrics = {
-        "total_return": round(total_return, 4),
-        "sharpe": round(sharpe, 4),
-        "max_drawdown": round(max_drawdown, 4)
+        "total_return": round(total_return, 6),
+        "sharpe": round(sharpe, 6),
+        "max_drawdown": round(max_drawdown, 6)
     }
 
     return {"metrics": metrics, "trade_log": trades}
