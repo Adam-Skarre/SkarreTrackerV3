@@ -20,18 +20,18 @@ def backtest(price: pd.Series, signal: pd.Series) -> dict:
     # Equity curve
     equity = (1 + strat_returns).cumprod()
 
-    # Build trade log DataFrame
+    # Build trade log DataFrame using Series directly for alignment
     trades = pd.DataFrame({
-        "Price": price.values,
-        "Signal": signal.values,
-        "Position": position.values,
-        "Return": strat_returns.values,
-        "Equity": equity.values
-    }, index=price.index)
+        "Price": price,
+        "Signal": signal,
+        "Position": position,
+        "Return": strat_returns,
+        "Equity": equity
+    })
 
     # Compute metrics
     total_return = equity.iloc[-1] - 1
-    sharpe = (strat_returns.mean() / strat_returns.std(ddof=1)) * np.sqrt(252) if strat_returns.std() != 0 else np.nan
+    sharpe = (strat_returns.mean() / strat_returns.std(ddof=1)) * np.sqrt(252) if strat_returns.std(ddof=1) != 0 else np.nan
     max_drawdown = (equity / equity.cummax() - 1).min()
 
     metrics = {
