@@ -24,6 +24,7 @@ if page == "About":
         """
     )
 
+# Live Signal Viewer
 elif page == "Live Signal":
     st.header("📈 Live Signal Viewer")
     ticker = st.sidebar.text_input("Ticker", value="SPY")
@@ -40,8 +41,26 @@ elif page == "Live Signal":
     use_acc = st.sidebar.checkbox("Use Acceleration", True)
 
     signals = generate_signals(slope, accel, entry, exit_, use_acc)
-    st.line_chart(signals)
 
+    # Plot price and signals
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=price.index, y=price, mode='lines', name='Price'
+    ))
+    buys = signals[signals == 1]
+    sells = signals[signals == -1]
+    if not buys.empty:
+        fig.add_trace(go.Scatter(
+            x=buys.index, y=price.loc[buys.index], mode='markers', name='Buy',
+            marker=dict(symbol='triangle-up', color='green', size=10)
+        ))
+    if not sells.empty:
+        fig.add_trace(go.Scatter(
+            x=sells.index, y=price.loc[sells.index], mode='markers', name='Sell',
+            marker=dict(symbol='triangle-down', color='red', size=10)
+        ))
+    fig.update_layout(xaxis_title='Date', yaxis_title='Price & Signals')
+    st.plotly_chart(fig, use_container_width=True)
 elif page == "Backtest V1":
     st.header("🔁 Backtest V1: Original Skarre Signal")
     ticker = st.sidebar.text_input("Ticker", value="SPY")
