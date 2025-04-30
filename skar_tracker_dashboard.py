@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
+import plotly.graph_objects as go
 from datetime import datetime
 
 from skar_lib.data_loader import get_data
@@ -10,9 +12,11 @@ from skar_lib.walkforward import run_walkforward
 
 st.set_page_config(page_title="Skarre Tracker Dashboard V3", layout="wide")
 
+# Sidebar Navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Select View", ["About", "Live Signal", "Backtest V1", "Walk-Forward"])
 
+# About Page
 if page == "About":
     st.title("📊 Skarre Tracker Dashboard — V3")
     st.markdown(
@@ -61,6 +65,8 @@ elif page == "Live Signal":
         ))
     fig.update_layout(xaxis_title='Date', yaxis_title='Price & Signals')
     st.plotly_chart(fig, use_container_width=True)
+
+# V1 Backtest
 elif page == "Backtest V1":
     st.header("🔁 Backtest V1: Original Skarre Signal")
     ticker = st.sidebar.text_input("Ticker", value="SPY")
@@ -81,6 +87,7 @@ elif page == "Backtest V1":
     st.subheader("Performance Metrics")
     st.json(result.get("metrics", {}))
 
+# Walk-Forward Validation
 elif page == "Walk-Forward":
     st.header("🧪 Walk-Forward Validation (V3)")
     ticker = st.sidebar.text_input("Ticker", value="SPY")
