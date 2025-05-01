@@ -124,12 +124,16 @@ elif page == "Walk-Forward":
         a = get_acceleration(p)
         return generate_signals(s, a, entry, exit_, True)
 
-    df_folds = run_walkforward(price, signal_fn, train_window, test_window, step)
-    st.subheader("Fold-by-Fold Results")
-    st.dataframe(df_folds)
-    
-if not df_folds.empty:
-    st.line_chart(df_folds[["return", "sharpe", "max_drawdown"]])
+    # Only run if data is valid
+    if not price.empty:
+        df_folds = run_walkforward(price, signal_fn, train_window, test_window, step)
+        st.subheader("Fold-by-Fold Results")
+        st.dataframe(df_folds)
+
+        if not df_folds.empty:
+            st.line_chart(df_folds[["return", "sharpe", "max_drawdown"]])
+    else:
+        st.warning("Price data is empty. Please check the ticker or date range.")
 
 # DO NOT INDENT BELOW LINE
 elif page == "Sensitivity Analysis":
