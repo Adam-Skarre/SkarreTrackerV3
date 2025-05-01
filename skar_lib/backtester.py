@@ -1,45 +1,60 @@
 import pandas as pd
 import numpy as np
 
-def backtest(price: pd.Series, signal: pd.Series) -> dict:
+def backtest(price: pd.Series, signal: pd.Series,
+             initial_cash=100000,
+             commission=1.0,
+             slippage_pct=0.001,
+             delay_days=1) -> dict:
     """
-    Simple backtest engine:
-      - Buys when signal == 1
-      - Sells when signal == -1
-      - Holds otherwise
-    Returns a dict with 'metrics' and 'trade_log' (both pandas objects).
+    Enhanced backtest engine with slippage, commission, delayed execution, and risk metrics.
     """
 
-    # 1. Align signal to next bar (we execute on the next period)
-    position = signal.shift(1).fillna(0)
+    # 1. Execution delay
+    signal = signal.shift(delay_days).fillna(0)
+    position = signal.replace({1: 1, -1: -1, 0: 0}).ffill().fillna(0)
 
-    # 2. Compute returns
+    # 2. Effective trading price with slippage
+    effective_price = price * (1 + slippage_pct)
+
+    # 3. Returns calculation
     returns = price.pct_change().fillna(0)
-    strat_returns = returns * position
+    strat_returns = returns * position.shift(1)
 
-    # 3. Build equity curve
-    equity = (1 + strat_returns).cumprod()
+    # 4. Trade costs
+    trades = position.diff().fillna(0).abs()
+    trade_costs = trades * commission / initial_cash
+    net_returns = strat_returns - trade_costs
 
-    # 4. Build the trade_log DataFrame by passing the Series directly.
-    #    This guarantees each column shares the same Date index.
-    trades = pd.DataFrame({
+    # 5. Equity curve
+    equity = (1 + net_returns).cumprod() * initial_cash
+
+    # 6. Trade log
+    trade_log = pd.DataFrame({
         "Price": price,
         "Signal": signal,
         "Position": position,
         "Return": strat_returns,
+        "Net Return": net_returns,
         "Equity": equity
     })
 
-    # 5. Compute summary metrics
-    total_return = equity.iloc[-1] - 1
-    sharpe = (strat_returns.mean() / strat_returns.std(ddof=1)) * np.sqrt(252) \
-             if strat_returns.std(ddof=1) != 0 else np.nan
+    # 7. Metrics
+    total_return = equity.iloc[-1] / equity.iloc[0] - 1
+    daily_ret = equity.pct_change().dropna()
+    sharpe = (daily_ret.mean() / daily_ret.std()) * np.sqrt(252) if daily_ret.std() != 0 else np.nan
+    sortino = (daily_ret.mean() / daily_ret[daily_ret < 0].std()) * np.sqrt(252) if len(daily_ret[daily_ret < 0]) > 0 else np.nan
     max_drawdown = (equity / equity.cummax() - 1).min()
+    cagr = (equity.iloc[-1] / equity.iloc[0]) ** (252 / len(equity)) - 1
+    turnover = trades.sum() / len(price)
 
     metrics = {
         "total_return": round(total_return, 6),
         "sharpe":       round(sharpe, 6),
-        "max_drawdown": round(max_drawdown, 6)
+        "sortino":      round(sortino, 6),
+        "max_drawdown": round(max_drawdown, 6),
+        "CAGR":         round(cagr, 6),
+        "turnover":     round(turnover, 6)
     }
 
-    return {"metrics": metrics, "trade_log": trades}
+    return {"metrics": metrics, "trade_log": trade_log}
