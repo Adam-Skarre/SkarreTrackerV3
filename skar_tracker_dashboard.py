@@ -18,7 +18,7 @@ page = st.sidebar.radio("Select View", ["About", "Live Signal", "Backtest V1", "
 
 # About Page
 if page == "About":
-    st.title("📊 Skarre Tracker Dashboard — V3")
+    st.title(" Skarre Tracker Dashboard — V3")
     st.markdown(
         """
         This V3 dashboard features:
