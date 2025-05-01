@@ -85,29 +85,29 @@ elif page == "Backtest V1":
 
     signals = generate_signals(slope, accel, entry, exit_, use_acc)
 
-  # DEBUG: check lengths before backtest
-st.write(f"▶️ Price length: {len(price)}    Signals length: {len(signals)}")
+    # ✅ THIS LINE MUST BE INDENTED
+    st.write(f"▶️ Price length: {len(price)}    Signals length: {len(signals)}")
 
-if price.empty or signals.empty:
-    st.warning("❗ Price or signal data is empty. Please check your ticker or date range.")
-else:
-    result = backtest(price, signals)
+    if price.empty or signals.empty:
+        st.warning("❗ Price or signal data is empty. Please check your ticker or date range.")
+    else:
+        result = backtest(price, signals)
 
-    # Plot equity curve with SPY benchmark
-    st.subheader("Equity Curve (Strategy vs SPY Buy & Hold)")
-    strategy_equity = result["trade_log"]["Equity"]
-    spy_benchmark = (1 + price.pct_change().fillna(0)).cumprod() * 100000
+        # Plot equity curve with SPY benchmark
+        st.subheader("Equity Curve (Strategy vs SPY Buy & Hold)")
+        strategy_equity = result["trade_log"]["Equity"]
+        spy_benchmark = (1 + price.pct_change().fillna(0)).cumprod() * 100000
 
-    equity_df = pd.DataFrame({
-        "Strategy": strategy_equity,
-        "SPY (Buy & Hold)": spy_benchmark
-    })
-    st.line_chart(equity_df)
+        equity_df = pd.DataFrame({
+            "Strategy": strategy_equity,
+            "SPY (Buy & Hold)": spy_benchmark
+        })
+        st.line_chart(equity_df)
 
-    # Show performance metrics
-    st.subheader("Performance Metrics")
-    for key, val in result["metrics"].items():
-        st.metric(label=key, value=f"{val:.2%}" if 'return' in key.lower() or 'drawdown' in key.lower() or 'cagr' in key.lower() else f"{val:.2f}")
+        # Show performance metrics
+        st.subheader("Performance Metrics")
+        for key, val in result["metrics"].items():
+            st.metric(label=key, value=f"{val:.2%}" if 'return' in key.lower() or 'drawdown' in key.lower() or 'cagr' in key.lower() else f"{val:.2f}")
 
 # Walk-Forward Validation
 elif page == "Walk-Forward":
