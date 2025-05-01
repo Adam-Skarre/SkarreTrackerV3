@@ -11,26 +11,35 @@ def get_slope(price: pd.Series, window: Optional[int] = None, polyorder: int = 2
         return pd.Series(0, index=price.index)
     
     # Auto-calculate safe window size
-    max_window = len(price) - 1 if len(price) % 2 == 0 else len(price)
-    window = min(window or 21, max_window) if max_window >= 3 else 3
-    window = max(3, window)  # Minimum window size
-    window = window if window % 2 == 1 else window - 1  # Ensure odd
+    max_window = len(price)
+    if window is None:
+        window = min(21, max_window)
+    else:
+        window = min(window, max_window)
     
-    # Adjust polyorder if needed
+    # Ensure valid window parameters
+    window = max(3, window)  # Minimum window size
+    if window % 2 == 0:  # Must be odd
+        window -= 1
+    
+    # Ensure valid polyorder
     polyorder = min(polyorder, window - 1)
     
     try:
-        # Use simpler calculation for very small windows
-        if window < 3:
+        # Fallback to gradient for very small windows
+        if window < 3 or len(price) < window:
             return pd.Series(np.gradient(price.values), index=price.index)
         
         return pd.Series(
-            savgol_filter(price.values, window_length=window, 
-                         polyorder=polyorder, deriv=1, mode='interp'),
+            savgol_filter(price.values, 
+                         window_length=window,
+                         polyorder=polyorder,
+                         deriv=1,
+                         mode='interp'),
             index=price.index
         )
-    except Exception:
-        # Fallback to numpy gradient if anything goes wrong
+    except Exception as e:
+        print(f"Warning: Using gradient fallback due to: {str(e)}")
         return pd.Series(np.gradient(price.values), index=price.index)
 
 def get_acceleration(price: pd.Series, window: Optional[int] = None, polyorder: int = 2) -> pd.Series:
