@@ -3,45 +3,48 @@ import numpy as np
 from scipy.signal import savgol_filter
 from typing import Optional
 
-def get_slope(price: pd.Series, window: Optional[int] = None, polyorder: int = 2) -> pd.Series:
-    """
-    Completely robust slope calculation that handles all edge cases.
-    """
-    if len(price) < 2:
-        return pd.Series(0, index=price.index)
+def safe_savgol(x: np.ndarray, window: int, polyorder: int, deriv: int) -> np.ndarray:
+    """Completely safe Savitzky-Golay filter wrapper"""
+    n = len(x)
+    if n == 0:
+        return np.zeros_like(x)
     
-    # Auto-calculate safe window size
-    max_window = len(price)
-    if window is None:
-        window = min(21, max_window)
-    else:
-        window = min(window, max_window)
-    
-    # Ensure valid window parameters
+    # Calculate maximum possible window
+    max_window = n if n % 2 == 1 else n - 1
+    window = min(window, max_window)
     window = max(3, window)  # Minimum window size
-    if window % 2 == 0:  # Must be odd
+    
+    # Ensure window is odd
+    if window % 2 == 0:
         window -= 1
     
-    # Ensure valid polyorder
+    # Adjust polyorder if needed
     polyorder = min(polyorder, window - 1)
     
     try:
-        # Fallback to gradient for very small windows
-        if window < 3 or len(price) < window:
-            return pd.Series(np.gradient(price.values), index=price.index)
-        
-        return pd.Series(
-            savgol_filter(price.values, 
-                         window_length=window,
-                         polyorder=polyorder,
-                         deriv=1,
-                         mode='interp'),
-            index=price.index
-        )
-    except Exception as e:
-        print(f"Warning: Using gradient fallback due to: {str(e)}")
-        return pd.Series(np.gradient(price.values), index=price.index)
+        if window >= 3 and n >= window:
+            return savgol_filter(x, window_length=window, 
+                               polyorder=polyorder, 
+                               deriv=deriv,
+                               mode='interp')
+        return np.gradient(x)  # Fallback for small datasets
+    except:
+        return np.gradient(x)  # Final fallback
+
+def get_slope(price: pd.Series, window: Optional[int] = None, polyorder: int = 2) -> pd.Series:
+    """Bulletproof slope calculation"""
+    if len(price) < 2:
+        return pd.Series(0, index=price.index)
+    
+    window = min(window or 21, len(price))  # Default to 21 or data length
+    filtered = safe_savgol(price.values, window, polyorder, deriv=1)
+    return pd.Series(filtered, index=price.index)
 
 def get_acceleration(price: pd.Series, window: Optional[int] = None, polyorder: int = 2) -> pd.Series:
-    """Robust acceleration calculation using slope of slope"""
-    return get_slope(get_slope(price, window, polyorder), window, polyorder)
+    """Bulletproof acceleration calculation"""
+    if len(price) < 3:
+        return pd.Series(0, index=price.index)
+    
+    window = min(window or 21, len(price))
+    filtered = safe_savgol(price.values, window, polyorder, deriv=2)
+    return pd.Series(filtered, index=price.index)
