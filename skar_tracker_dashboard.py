@@ -128,11 +128,13 @@ elif page == "Walk-Forward":
     st.subheader("Fold-by-Fold Results")
     st.dataframe(df_folds)
     
-   if not df_folds.empty:
+if not df_folds.empty:
     st.line_chart(df_folds[["return", "sharpe", "max_drawdown"]])
 
+# DO NOT INDENT BELOW LINE
 elif page == "Sensitivity Analysis":
     st.header("📊 Sensitivity Analysis: Sharpe vs Entry & Min Hold")
+   
 
     ticker = st.sidebar.text_input("Ticker", value="SPY")
     start = st.sidebar.date_input("Start Date", datetime(2018, 1, 1))
