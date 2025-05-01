@@ -4,6 +4,10 @@ import plotly.graph_objects as go
 import plotly.graph_objects as go
 from datetime import datetime
 
+import skar_lib.data_loader as dl
+st.write(f"Loading data_loader from: {dl.__file__}")
+
+
 from skar_lib.data_loader import get_data
 from skar_lib.backtester import backtest
 from skar_lib.signal_logic import generate_signals
