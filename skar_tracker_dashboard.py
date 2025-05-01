@@ -9,12 +9,13 @@ from skar_lib.backtester import backtest
 from skar_lib.signal_logic import generate_signals
 from skar_lib.polynomial_fit import get_slope, get_acceleration
 from skar_lib.walkforward import run_walkforward
+from skar_lib.sensitivity import run_sensitivity
 
 st.set_page_config(page_title="Skarre Tracker Dashboard V3", layout="wide")
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Select View", ["About", "Live Signal", "Backtest V1", "Walk-Forward"])
+page = st.sidebar.radio("Select View", ["About", "Live Signal", "Backtest V1", "Walk-Forward", "Sensitivity Analysis"])
 
 # About Page
 if page == "About":
@@ -128,3 +129,50 @@ elif page == "Walk-Forward":
     st.dataframe(df_folds)
     if not df_folds.empty:
         st.line_chart(df_folds[["return", "sharpe", "max_drawdown"]])
+        elif page == "Sensitivity Analysis":
+    st.header("📊 Sensitivity Analysis: Sharpe vs Entry & Min Hold")
+
+    ticker = st.sidebar.text_input("Ticker", value="SPY")
+    start = st.sidebar.date_input("Start Date", datetime(2018, 1, 1))
+    end = st.sidebar.date_input("End Date", datetime.today())
+
+    df = get_data(ticker, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
+    price = df["Price"]
+
+    # Define parameter sweep ranges
+    entry_min = st.sidebar.number_input("Entry Min", value=0.1)
+    entry_max = st.sidebar.number_input("Entry Max", value=1.0)
+    entry_step = st.sidebar.number_input("Entry Step", value=0.1)
+
+    hold_min = st.sidebar.number_input("Min Hold Min", value=1)
+    hold_max = st.sidebar.number_input("Min Hold Max", value=10)
+    hold_step = st.sidebar.number_input("Min Hold Step", value=1)
+
+    use_acc = st.sidebar.checkbox("Use Acceleration", value=True)
+
+    def signal_fn_factory(entry, hold):
+        def inner(price_window):
+            slope = get_slope(price_window)
+            accel = get_acceleration(price_window)
+            return generate_signals(slope, accel, entry, -entry, use_acc=use_acc, min_hold=hold)
+        return inner
+
+    st.write("Running grid search...")
+    grid_df = run_sensitivity(
+        price,
+        signal_fn_factory,
+        entry_range=(entry_min, entry_max + 0.001, entry_step),
+        hold_range=(hold_min, hold_max + 1, hold_step)
+    )
+
+    st.subheader("📈 Sharpe Ratio Heatmap")
+    st.dataframe(grid_df)
+
+    import plotly.express as px
+    fig = px.imshow(grid_df.values,
+                    labels=dict(x="Min Hold", y="Entry Threshold", color="Sharpe"),
+                    x=grid_df.columns.astype(str),
+                    y=grid_df.index.astype(str),
+                    color_continuous_scale="Viridis",
+                    aspect="auto")
+    st.plotly_chart(fig)
