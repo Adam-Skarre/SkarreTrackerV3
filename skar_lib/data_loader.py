@@ -9,7 +9,7 @@ def get_data(ticker: str, start: str, end: str) -> pd.DataFrame:
     print(f"[DEBUG] Downloaded columns for {ticker}: {list(df.columns)}")
 
     if "Adj Close" in df.columns:
-        df = df[["Adj Close"]].rename(columns={"Adj Close": "Price"})
+        df = df[["Close"]].rename(columns={"Close": "Price"})  # Use "Close" if no adjusted close exists
     elif "Close" in df.columns:
         df = df[["Close"]].rename(columns={"Close": "Price"})
     else:
