@@ -120,24 +120,26 @@ elif page == "Walk-Forward":
     step = st.sidebar.number_input("Step Size (days)", min_value=1, value=63)
 
     df = get_data(ticker, "2000-01-01", datetime.today().strftime("%Y-%m-%d"))
-    price = df["Price"]
 
-    def signal_fn(p):
-        s = get_slope(p)
-        a = get_acceleration(p)
-        return generate_signals(s, a, entry, exit_, True)
-
-    # Only run if data is valid
-    if not price.empty:
-        df_folds = run_walkforward(price, signal_fn, train_window, test_window, step)
-        st.subheader("Fold-by-Fold Results")
-        st.dataframe(df_folds)
-
-        if not df_folds.empty:
-            st.line_chart(df_folds[["return", "sharpe", "max_drawdown"]])
+    if df.empty or "Price" not in df:
+        st.warning("❗ Data not loaded properly. Please check your ticker or connection.")
     else:
-        st.warning("Price data is empty. Please check the ticker or date range.")
+        price = df["Price"]
 
+        def signal_fn(p):
+            s = get_slope(p)
+            a = get_acceleration(p)
+            return generate_signals(s, a, entry, exit_, use_acc=True)
+
+        if not price.empty:
+            df_folds = run_walkforward(price, signal_fn, train_window, test_window, step)
+            st.subheader("Fold-by-Fold Results")
+            st.dataframe(df_folds)
+
+            if not df_folds.empty:
+                st.line_chart(df_folds[["return", "sharpe", "max_drawdown"]])
+        else:
+            st.warning("Price data is empty. Please check the date range or ticker.")
 # DO NOT INDENT BELOW LINE
 elif page == "Sensitivity Analysis":
     st.header("📊 Sensitivity Analysis: Sharpe vs Entry & Min Hold")
