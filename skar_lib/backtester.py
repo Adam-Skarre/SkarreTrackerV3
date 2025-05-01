@@ -29,6 +29,18 @@ def backtest(price: pd.Series, signal: pd.Series,
     # 5. Equity curve
     equity = (1 + net_returns).cumprod() * initial_cash
 
+    # Align all series before constructing the trade log
+    common_index = price.index
+    for series in [signal, position, strat_returns, net_returns, equity]:
+        common_index = common_index.intersection(series.index)
+
+    price = price.loc[common_index]
+    signal = signal.loc[common_index]
+    position = position.loc[common_index]
+    strat_returns = strat_returns.loc[common_index]
+    net_returns = net_returns.loc[common_index]
+    equity = equity.loc[common_index]
+
     # 6. Trade log
     trade_log = pd.DataFrame({
         "Price": price,
