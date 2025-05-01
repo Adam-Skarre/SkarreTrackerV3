@@ -83,13 +83,27 @@ elif page == "Backtest V1":
     use_acc = st.sidebar.checkbox("Use Acceleration", True)
 
     signals = generate_signals(slope, accel, entry, exit_, use_acc)
-    
+
     # DEBUG: check lengths before backtest
     st.write(f"▶️ Price length: {len(price)}    Signals length: {len(signals)}")
-    
+
     result = backtest(price, signals)
+
+    # Plot equity curve with SPY benchmark
+    st.subheader("Equity Curve (Strategy vs SPY Buy & Hold)")
+    strategy_equity = result["trade_log"]["Equity"]
+    spy_benchmark = (1 + price.pct_change().fillna(0)).cumprod() * 100000
+
+    equity_df = pd.DataFrame({
+        "Strategy": strategy_equity,
+        "SPY (Buy & Hold)": spy_benchmark
+    })
+    st.line_chart(equity_df)
+
+    # Show performance metrics
     st.subheader("Performance Metrics")
-    st.json(result.get("metrics", {}))
+    for key, val in result["metrics"].items():
+        st.metric(label=key, value=f"{val:.2%}" if 'return' in key.lower() or 'drawdown' in key.lower() or 'cagr' in key.lower() else f"{val:.2f}")
 
 # Walk-Forward Validation
 elif page == "Walk-Forward":
