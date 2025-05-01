@@ -4,7 +4,7 @@ import pandas as pd
 def get_data(ticker: str, start: str, end: str) -> pd.DataFrame:
     df = yf.download(ticker, start=start, end=end)
 
-    print(f"[DEBUG] Downloaded columns for {ticker}: {list(df.columns)}")  # Confirm it's updated
+    print(f"[DEBUG] Downloaded columns for {ticker}: {list(df.columns)}")  # For verification
 
     if "Adj Close" in df.columns:
         df = df[["Adj Close"]].rename(columns={"Adj Close": "Price"})
