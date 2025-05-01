@@ -1,16 +1,14 @@
 import streamlit as st
 
-# MUST BE FIRST — BEFORE ANY OTHER STREAMLIT COMMANDS
+#  MUST COME FIRST BEFORE ANY STREAMLIT USAGE
 st.set_page_config(page_title="Skarre Tracker Dashboard V3", layout="wide")
 
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
 
-# Only after setting page config, safe to import
+# Now safe to load your modules
 import skar_lib.data_loader as dl
-
-# This is okay because it's AFTER set_page_config
 st.write(f"Loading data_loader from: {dl.__file__}")
 
 from skar_lib.data_loader import get_data
