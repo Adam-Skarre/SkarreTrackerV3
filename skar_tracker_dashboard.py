@@ -42,118 +42,139 @@ if page == "About":
     )
 
 # --- LIVE SIGNAL VIEWER ---
-# --- LIVE SIGNAL VIEWER ---
 elif page == "Live Signal":
     st.header("Live Signal Viewer")
     
-    try:
-        # Input controls
-        col1, col2 = st.sidebar.columns(2)
+    # Input controls in sidebar
+    with st.sidebar:
+        st.subheader("Parameters")
+        ticker = st.text_input("Ticker Symbol", value="SPY", 
+                             help="Enter a valid stock ticker (e.g., SPY, AAPL)")
+        
+        col1, col2 = st.columns(2)
         with col1:
-            ticker = st.text_input("Ticker", value="SPY", help="Enter stock symbol (e.g., SPY, AAPL)")
-            start_date = st.date_input("Start Date", value=datetime(2022, 1, 1), 
+            start_date = st.date_input("Start Date", value=datetime(2022, 1, 1),
                                      max_value=datetime.today())
         with col2:
             end_date = st.date_input("End Date", value=datetime.today(),
                                    min_value=start_date,
                                    max_value=datetime.today())
-            
-            if start_date >= end_date:
-                st.error("End date must be after start date")
-                st.stop()
+        
+        st.markdown("---")
+        st.subheader("Signal Settings")
+        entry = st.number_input("Entry Threshold", value=0.5, min_value=0.0, step=0.1,
+                              help="Slope value required to generate buy signal")
+        exit_ = st.number_input("Exit Threshold", value=-0.5, max_value=0.0, step=0.1,
+                              help="Slope value required to generate sell signal")
+        use_acc = st.checkbox("Use Acceleration", value=True,
+                            help="Include acceleration in signal generation")
+        window_size = st.slider("Smoothing Window", min_value=5, max_value=61, 
+                              value=21, step=2,
+                              help="Larger values create smoother signals")
 
-        # Get data with validation
+    try:
+        # Data loading with validation
         with st.spinner(f"Loading {ticker} data..."):
-            try:
-                df = get_data(ticker, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
-                if df.empty:
-                    st.error(f"No data available for {ticker} in selected date range")
-                    st.stop()
-                    
-                if "Price" not in df.columns:
-                    st.error("Data format error: Price column missing")
-                    st.stop()
-                    
-                price = df["Price"].dropna()
-                if len(price) < 10:
-                    st.warning(f"Only {len(price)} data points available. Results may be unreliable.")
-                    
-            except Exception as e:
-                st.error(f"Failed to load data: {str(e)}")
+            df = get_data(ticker, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
+            
+            if df.empty:
+                st.error("No data returned - check ticker symbol and date range")
                 st.stop()
+                
+            if "Price" not in df.columns:
+                st.error("Data format error - missing 'Price' column")
+                st.stop()
+                
+            price = df["Price"].dropna()
+            if len(price) < 10:
+                st.warning(f"Limited data ({len(price)} points) - results may be unreliable")
+                if len(price) < 3:
+                    st.error("Insufficient data points (need at least 3)")
+                    st.stop()
 
-        # Signal parameters
-        with st.sidebar.expander("Signal Parameters"):
-            entry = st.number_input("Entry Threshold", 
-                                  value=0.5, 
-                                  min_value=0.0, 
-                                  step=0.1,
-                                  help="Slope value required to generate buy signal")
-            exit_ = st.number_input("Exit Threshold", 
-                                   value=-0.5, 
-                                   max_value=0.0, 
-                                   step=0.1,
-                                   help="Slope value required to generate sell signal")
-            use_acc = st.checkbox("Use Acceleration", 
-                                 value=True,
-                                 help="Include acceleration in signal generation")
-            window_size = st.slider("Smoothing Window", 
-                                   min_value=5, 
-                                   max_value=min(61, len(price)), 
-                                   value=min(21, len(price)), 
-                                   step=2,
-                                   help="Larger values = smoother signals")
+        # Dynamic window adjustment
+        safe_window = min(window_size, len(price))
+        safe_window = max(3, safe_window)  # Minimum window size
+        if safe_window % 2 == 0:  # Must be odd
+            safe_window -= 1
 
-        # Calculate indicators
+        # Indicator calculation
         with st.spinner("Calculating indicators..."):
-            try:
-                slope = get_slope(price, window=window_size)
-                accel = get_acceleration(price, window=window_size)
-                signals = generate_signals(slope, accel, entry, exit_, use_acc)
-            except Exception as e:
-                st.error(f"Indicator calculation failed: {str(e)}")
-                st.stop()
+            slope = get_slope(price, window=safe_window)
+            accel = get_acceleration(price, window=safe_window)
+            signals = generate_signals(slope, accel, entry, exit_, use_acc)
 
         # Visualization
-        tab1, tab2 = st.tabs(["Price with Signals", "Indicators"])
+        fig = go.Figure()
         
-        with tab1:
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=price.index, y=price, mode='lines', name='Price'))
-            
-            buy_signals = signals[signals == 1]
-            sell_signals = signals[signals == -1]
-            
-            if not buy_signals.empty:
-                fig.add_trace(go.Scatter(
-                    x=buy_signals.index, 
-                    y=price.loc[buy_signals.index], 
-                    mode='markers', 
-                    name='Buy',
-                    marker=dict(symbol='triangle-up', size=10, color='green')
-                ))
-                
-            if not sell_signals.empty:
-                fig.add_trace(go.Scatter(
-                    x=sell_signals.index, 
-                    y=price.loc[sell_signals.index], 
-                    mode='markers', 
-                    name='Sell',
-                    marker=dict(symbol='triangle-down', size=10, color='red')
-                ))
-                
-            fig.update_layout(
-                title=f"{ticker} Price with Trading Signals",
-                xaxis_title='Date',
-                yaxis_title='Price'
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-        with tab2:
+        # Price line
+        fig.add_trace(go.Scatter(
+            x=price.index,
+            y=price,
+            mode='lines',
+            name='Price',
+            line=dict(color='#1f77b4', width=2)
+        ))
+        
+        # Buy signals
+        buy_signals = signals[signals == 1]
+        if not buy_signals.empty:
+            fig.add_trace(go.Scatter(
+                x=buy_signals.index,
+                y=price.loc[buy_signals.index],
+                mode='markers',
+                name='Buy',
+                marker=dict(
+                    symbol='triangle-up',
+                    size=12,
+                    color='green',
+                    line=dict(width=1, color='DarkSlateGrey')
+                )
+            ))
+        
+        # Sell signals
+        sell_signals = signals[signals == -1]
+        if not sell_signals.empty:
+            fig.add_trace(go.Scatter(
+                x=sell_signals.index,
+                y=price.loc[sell_signals.index],
+                mode='markers',
+                name='Sell',
+                marker=dict(
+                    symbol='triangle-down',
+                    size=12,
+                    color='red',
+                    line=dict(width=1, color='DarkSlateGrey')
+                )
+            ))
+        
+        fig.update_layout(
+            title=f"{ticker} Price with Trading Signals",
+            xaxis_title='Date',
+            yaxis_title='Price',
+            hovermode='x unified',
+            showlegend=True,
+            height=600
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Indicators plot
+        with st.expander("Show Technical Indicators"):
             fig2 = go.Figure()
-            fig2.add_trace(go.Scatter(x=slope.index, y=slope, name='Slope'))
+            fig2.add_trace(go.Scatter(
+                x=slope.index,
+                y=slope,
+                name='Slope',
+                line=dict(color='purple')
+            ))
             if use_acc:
-                fig2.add_trace(go.Scatter(x=accel.index, y=accel, name='Acceleration'))
+                fig2.add_trace(go.Scatter(
+                    x=accel.index,
+                    y=accel,
+                    name='Acceleration',
+                    line=dict(color='orange')
+                ))
             fig2.update_layout(
                 title="Slope and Acceleration Indicators",
                 xaxis_title='Date',
@@ -162,7 +183,7 @@ elif page == "Live Signal":
             st.plotly_chart(fig2, use_container_width=True)
             
     except Exception as e:
-        st.error(f"Unexpected error: {str(e)}")
+        st.error(f"An error occurred: {str(e)}")
         st.stop()
 
     # Plot price and signals
