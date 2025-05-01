@@ -85,9 +85,12 @@ elif page == "Backtest V1":
 
     signals = generate_signals(slope, accel, entry, exit_, use_acc)
 
-    # DEBUG: check lengths before backtest
-    st.write(f"▶️ Price length: {len(price)}    Signals length: {len(signals)}")
+  # DEBUG: check lengths before backtest
+st.write(f"▶️ Price length: {len(price)}    Signals length: {len(signals)}")
 
+if price.empty or signals.empty:
+    st.warning("❗ Price or signal data is empty. Please check your ticker or date range.")
+else:
     result = backtest(price, signals)
 
     # Plot equity curve with SPY benchmark
