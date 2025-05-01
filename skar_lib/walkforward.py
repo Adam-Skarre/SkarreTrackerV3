@@ -11,8 +11,16 @@ def run_walkforward(
 ) -> pd.DataFrame:
     """
     Run walk-forward backtest across time splits.
-    For each fold, use `signal_fn()` on test set and run backtest.
+
+    For each fold:
+    - Simulate using past data (train_window) to optimize parameters
+    - Apply signal_fn to test_window
+    - Run backtest on test set
+    - Collect Sharpe, MaxDD, CAGR, etc.
+
+    Returns a DataFrame of fold-wise metrics for performance validation.
     """
+
     results: List[Dict] = []
     n = len(price)
     idx = price.index
