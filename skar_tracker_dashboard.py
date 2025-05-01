@@ -128,9 +128,10 @@ elif page == "Walk-Forward":
     st.subheader("Fold-by-Fold Results")
     st.dataframe(df_folds)
     
-    if not df_folds.empty:
-        st.line_chart(df_folds[["return", "sharpe", "max_drawdown"]])
- elif page == "Sensitivity Analysis":
+   if not df_folds.empty:
+    st.line_chart(df_folds[["return", "sharpe", "max_drawdown"]])
+
+elif page == "Sensitivity Analysis":
     st.header("📊 Sensitivity Analysis: Sharpe vs Entry & Min Hold")
 
     ticker = st.sidebar.text_input("Ticker", value="SPY")
